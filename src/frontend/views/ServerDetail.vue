@@ -874,6 +874,9 @@ const syncProbeChartVisibility = () => {
       if (!dataset) continue
       const disabled = isDisabledProbeMetric(server.value[item.field])
       dataset.disabledProbe = disabled
+      dataset.noDataProbe = !dataset.data?.some(point => (
+        point?.y !== null && point?.y !== undefined && point?.y !== '' && Number.isFinite(Number(point.y))
+      ))
       // Only force hide if disabled by config; otherwise preserve user's legend toggle
       if (disabled) {
         dataset.hidden = true
@@ -963,7 +966,10 @@ const initCharts = () => {
             font: { size: 10, family: "'JetBrains Mono', monospace" },
             usePointStyle: true,
             color: chartTheme.axis,
-            filter: (legendItem, chartData) => !chartData.datasets[legendItem.datasetIndex]?.disabledProbe
+            filter: (legendItem, chartData) => {
+              const dataset = chartData.datasets[legendItem.datasetIndex]
+              return !dataset?.disabledProbe && !dataset?.noDataProbe
+            }
           }
         },
         tooltip: {

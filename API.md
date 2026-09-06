@@ -370,10 +370,18 @@ CORS_ALLOWED_ORIGINS=https://status.example.com,https://admin.example.com
 | `ping_cu`        | string\|number\|false\|null | ms  | 否  | 联通节点延时                                      |
 | `ping_cm`        | string\|number\|false\|null | ms  | 否  | 移动节点延时                                      |
 | `ping_bd`        | string\|number\|false\|null | ms  | 否  | BGP 节点延时                                    |
+| `ping_node_1`    | string\|number\|false\|null | ms  | 否  | 自定义节点 1 延时；空值表示未取到，`false` / `"false"` 表示禁用 |
+| `ping_node_2`    | string\|number\|false\|null | ms  | 否  | 自定义节点 2 延时                                |
+| `ping_node_3`    | string\|number\|false\|null | ms  | 否  | 自定义节点 3 延时                                |
+| `ping_node_4`    | string\|number\|false\|null | ms  | 否  | 自定义节点 4 延时                                |
 | `loss_ct`        | string\|number\|false\|null | %   | 否  | 电信丢包率                                       |
 | `loss_cu`        | string\|number\|false\|null | %   | 否  | 联通丢包率                                       |
 | `loss_cm`        | string\|number\|false\|null | %   | 否  | 移动丢包率                                       |
 | `loss_bd`        | string\|number\|false\|null | %   | 否  | BGP 丢包率                                     |
+| `loss_node_1`    | string\|number\|false\|null | %   | 否  | 自定义节点 1 丢包率                              |
+| `loss_node_2`    | string\|number\|false\|null | %   | 否  | 自定义节点 2 丢包率                              |
+| `loss_node_3`    | string\|number\|false\|null | %   | 否  | 自定义节点 3 丢包率                              |
+| `loss_node_4`    | string\|number\|false\|null | %   | 否  | 自定义节点 4 丢包率                              |
 
 **Response**
 
@@ -1828,8 +1836,8 @@ UUID 缺失或格式非法时返回 `400 { "error": "invalidServerId", "code": 4
 | `processes`                                   | number             | 进程数                       |
 | `tcp_conn`                                    | number             | TCP 连接数                   |
 | `udp_conn`                                    | number             | UDP 套接字数                  |
-| `ping_ct` / `ping_cu` / `ping_cm` / `ping_bd` | number\|null\|false | 各运营商延时 (ms)；`false` 表示禁用该节点 |
-| `loss_ct` / `loss_cu` / `loss_cm` / `loss_bd` | number\|null\|false | 各运营商丢包率 (%)；`false` 表示禁用该节点 |
+| `ping_ct` / `ping_cu` / `ping_cm` / `ping_bd` / `ping_node_1` 至 `ping_node_4` | number\|null\|false | 各运营商及自定义节点延时 (ms)；`false` 表示禁用，`null` 表示未取得数据 |
+| `loss_ct` / `loss_cu` / `loss_cm` / `loss_bd` / `loss_node_1` 至 `loss_node_4` | number\|null\|false | 各运营商及自定义节点丢包率 (%)；`false` 表示禁用，`null` 表示未取得数据；`0` 是有效值 |
 | `ping` / `loss`                               | array              | 仅 `/api/servers` 的 `servers[]` 列表项返回，`/api/server` 详情接口不返回；后台开启三网详情时，从 D1 最近 2 小时历史按时间范围抽样最多 20 个真实样本点，当前 Worker isolate 内缓存约 5 分钟；关闭三网详情时为空数组且不触发这部分 D1 查询。点格式为 `{ ts, ct, cu, cm, bd }`，`ct/cu/cm/bd` 分别对应电信、联通、移动、BGP。`ts` 为真实上报时间，不强制等差对齐，也不会用最近点补齐缺口 |
 | `ram_total` / `ram_used`                      | number             | MB                        |
 | `swap_total` / `swap_used`                    | number             | MB                        |
@@ -1859,7 +1867,7 @@ UUID 缺失或格式非法时返回 `400 { "error": "invalidServerId", "code": 4
 | 字段          | 类型             | 说明 |
 | ----------- | -------------- | ---- |
 | `timestamp` | number (ms)    | 采样时间 |
-| 其余字段        | number\|string\|null | 当前 `/api/history/all` 固定返回：`cpu, gpu_info, ram_total, ram_used, disk_total, disk_used, disk_read_bps, disk_write_bps, disk_read_iops, disk_write_iops, disk_await_ms, disk_util, processes, net_in_speed, net_out_speed, tcp_conn, udp_conn, ping_ct, ping_cu, ping_cm, ping_bd, loss_ct, loss_cu, loss_cm, loss_bd, swap_total, swap_used, load_avg, region, kernel_version`；其中 `gpu_info` 通常是 JSON 数组字符串，`disk` 仅在 `disk_*` 历史列存在有效数据时由服务端还原 |
+| 其余字段        | number\|string\|null | 当前 `/api/history/all` 固定返回：`cpu, gpu_info, ram_total, ram_used, disk_total, disk_used, disk_read_bps, disk_write_bps, disk_read_iops, disk_write_iops, disk_await_ms, disk_util, processes, net_in_speed, net_out_speed, tcp_conn, udp_conn, ping_ct, ping_cu, ping_cm, ping_bd, ping_node_1, ping_node_2, ping_node_3, ping_node_4, loss_ct, loss_cu, loss_cm, loss_bd, loss_node_1, loss_node_2, loss_node_3, loss_node_4, swap_total, swap_used, load_avg, region, kernel_version`；其中 `gpu_info` 通常是 JSON 数组字符串，`disk` 仅在 `disk_*` 历史列存在有效数据时由服务端还原 |
 
 历史行不包含单独的 `gpu` 字段，只包含 `gpu_info`。
 
