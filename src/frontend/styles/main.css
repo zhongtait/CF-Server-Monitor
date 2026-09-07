@@ -3111,6 +3111,7 @@ body::before {
 
 .chart-title {
     font-size: 13px;
+    min-width: 80px;
     font-weight: 600;
     color: var(--text-primary);
     display: flex;
@@ -4031,8 +4032,8 @@ body.server-row-drag-active * {
 .ping-indicator {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    font-size: 11px;
+    gap: 5px 10px;
+    font-size: 10px;
     font-weight: 500;
 }
 

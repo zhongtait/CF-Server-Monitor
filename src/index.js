@@ -7,6 +7,7 @@ import { handleUpdate, handleWebSocketUpgrade, handleUpdateWebSocketUpgrade } fr
 import { handleServerAPI, handleServersAPI } from './handlers/dashboard.js';
 import { handleTheme } from './handlers/theme.js';
 import { isValidThemeOptions, loadSettings, loadSiteSettings, loadAppearanceOptions, normalizeFrontendWsTimeoutMinutes, normalizeLongHistoryPoints, saveThemeOptions, setDebug, debug } from './utils/settings.js';
+import { omitNullLossProbeFields } from './handlers/dashboard.js';
 import { checkAuth, simpleAuthResponse } from './middleware/auth.js';
 import { getServerDetail, getMetricsHistoryCache, setMetricsHistoryCache, getCacheDuration } from './utils/cache.js';
 import { AppError, createSuccessResponse, createUnauthorizedResponse, createBadRequestResponse, createNotFoundResponse, createErrorResponse } from './utils/errors.js';
@@ -133,7 +134,10 @@ async function fetchHistoryData(env, request, id, hours, columns, sys = null) {
 
   const cached = getMetricsHistoryCache(id, clampedHours, columns, longHistoryPoints);
   if (cached && Date.now() - cached.timestamp < cacheDuration) {
-    return createSuccessResponse(cached.data, { 'X-Cache': 'HIT' });
+    const cachedData = Array.isArray(cached.data)
+      ? cached.data.map(omitNullLossProbeFields)
+      : cached.data;
+    return createSuccessResponse(cachedData, { 'X-Cache': 'HIT' });
   }
   
   let data;
@@ -160,9 +164,12 @@ async function fetchHistoryData(env, request, id, hours, columns, sys = null) {
     throw e;
   }
   
-  setMetricsHistoryCache(id, clampedHours, columns, data, longHistoryPoints);
+  const sanitizedData = Array.isArray(data)
+    ? data.map(omitNullLossProbeFields)
+    : data;
+  setMetricsHistoryCache(id, clampedHours, columns, sanitizedData, longHistoryPoints);
   
-  return createSuccessResponse(data, { 'X-Cache': 'MISS' });
+  return createSuccessResponse(sanitizedData, { 'X-Cache': 'MISS' });
 }
 
 export default {

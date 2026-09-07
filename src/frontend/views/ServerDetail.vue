@@ -680,14 +680,18 @@ const avgLossRefs = {
   loss_node_4: avgLossNode4
 }
 
-const visiblePingFields = computed(() => PING_FIELD_DEFS.filter(item => !isDisabledProbeMetric(server.value[item.field])))
+const visiblePingFields = computed(() => PING_FIELD_DEFS.filter(item => {
+  const value = server.value[item.field]
+  return value !== undefined && !isDisabledProbeMetric(value)
+}))
 const hasPingData = computed(() => visiblePingFields.value.length > 0)
 const visiblePingStats = computed(() => visiblePingFields.value.map(item => ({
   ...item,
   label: pingLabel(item.field.replace('ping_', '')),
   value: avgPingRefs[item.field].value
-})).filter(item => item.value !== null))
+})))
 const visibleLossFields = computed(() => PING_FIELD_DEFS.filter(item => (
+  server.value[item.field] !== undefined &&
   !isDisabledProbeMetric(server.value[item.field]) &&
   (lossHistoryFields.value[item.lossField] || isLossValid(server.value[item.lossField]))
 )))
@@ -872,13 +876,15 @@ const syncProbeChartVisibility = () => {
     for (const item of PING_FIELD_DEFS) {
       const dataset = chart.data.datasets[item.datasetIndex]
       if (!dataset) continue
-      const disabled = isDisabledProbeMetric(server.value[item.field])
+      const value = server.value[item.field]
+      const disabled = isDisabledProbeMetric(value)
+      // 与 WSS 保持一致：字段不存在(undefined)或为 false 时不显示；
+      // null 表示超时，仍需保留在图表中，不能当作“无数据”隐藏。
+      const noReport = value === undefined
       dataset.disabledProbe = disabled
-      dataset.noDataProbe = !dataset.data?.some(point => (
-        point?.y !== null && point?.y !== undefined && point?.y !== '' && Number.isFinite(Number(point.y))
-      ))
+      dataset.noDataProbe = noReport
       // Only force hide if disabled by config; otherwise preserve user's legend toggle
-      if (disabled) {
+      if (disabled || noReport) {
         dataset.hidden = true
         if (typeof chart.setDatasetVisibility === 'function') {
           chart.setDatasetVisibility(item.datasetIndex, false)
@@ -1587,22 +1593,19 @@ const appendReportCharts = (data, dataTimestamp) => {
   appendDataToChart(charts.proc, 0, dataTimestamp, data.processes)
   appendDataToChart(charts.conn, 0, dataTimestamp, data.tcp_conn)
   appendDataToChart(charts.conn, 1, dataTimestamp, data.udp_conn)
-  appendDataToChart(charts.ping, 0, dataTimestamp, data.ping_ct, true)
-  appendDataToChart(charts.ping, 1, dataTimestamp, data.ping_cu, true)
-  appendDataToChart(charts.ping, 2, dataTimestamp, data.ping_cm, true)
-  appendDataToChart(charts.ping, 3, dataTimestamp, data.ping_bd, true)
-  appendDataToChart(charts.ping, 4, dataTimestamp, data.ping_node_1, true)
-  appendDataToChart(charts.ping, 5, dataTimestamp, data.ping_node_2, true)
-  appendDataToChart(charts.ping, 6, dataTimestamp, data.ping_node_3, true)
-  appendDataToChart(charts.ping, 7, dataTimestamp, data.ping_node_4, true)
-  appendDataToChart(charts.loss, 0, dataTimestamp, data.loss_ct, false, true)
-  appendDataToChart(charts.loss, 1, dataTimestamp, data.loss_cu, false, true)
-  appendDataToChart(charts.loss, 2, dataTimestamp, data.loss_cm, false, true)
-  appendDataToChart(charts.loss, 3, dataTimestamp, data.loss_bd, false, true)
-  appendDataToChart(charts.loss, 4, dataTimestamp, data.loss_node_1, false, true)
-  appendDataToChart(charts.loss, 5, dataTimestamp, data.loss_node_2, false, true)
-  appendDataToChart(charts.loss, 6, dataTimestamp, data.loss_node_3, false, true)
-  appendDataToChart(charts.loss, 7, dataTimestamp, data.loss_node_4, false, true)
+
+  // 与 WSS 一致：字段不存在(undefined)或为 false 时不产生图表点，
+  // null 表示超时，保留为断点/超时提示。
+  for (const item of PING_FIELD_DEFS) {
+    const appendProbe = (chart, field, isPing) => {
+      if (!hasOwn(data, field)) return
+      if (isDisabledProbeMetric(data[field])) return
+      appendDataToChart(chart, item.datasetIndex, dataTimestamp, data[field], isPing, !isPing)
+    }
+    appendProbe(charts.ping, item.field, true)
+    appendProbe(charts.loss, item.lossField, false)
+  }
+
   appendLoadChartData(dataTimestamp, data.load_avg)
 }
 
